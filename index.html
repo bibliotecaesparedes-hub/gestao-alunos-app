@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <title>Educação Especial · Painel do Professor (Graph · v2)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Content Security Policy (sem 'frame-ancestors' em <meta>; esse diretivo só tem efeito via header HTTP) -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self' https://alcdn.msauth.net https://alcdn.msftauth.net https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://graph.microsoft.com;
+    script-src   'self' https://alcdn.msauth.net https://alcdn.msftauth.net https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline';
+    style-src    'self' 'unsafe-inline';
+    img-src      'self' data:;
+    connect-src  'self' https://login.microsoftonline.com https://alcdn.msauth.net https://alcdn.msftauth.net https://graph.microsoft.com;
+    base-uri 'self'; form-action 'self';
+  ">
+
+  <style>
+    :root{
+      --brand:#123a6d; --brand2:#0b1f39; --fg:#fff; --bg:#f5f7fb; --ink:#0b1320; --ink2:#273449; --line:#e6eef8; --card:#fff;
+      --ok:#0fa958; --warn:#cc9a06; --err:#d33a2c; --chip:#eef4ff; --btn:#1f5bd8; --btn2:#eef3ff; --btnInk:#14428f; --radius:12px;
+      --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    header{background:linear-gradient(120deg,var(--brand),var(--brand2));color:var(--fg);padding:18px 16px;position:sticky;top:0;z-index:10;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+    .container{max-width:1200px;margin:0 auto;padding:0 16px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .right{margin-left:auto}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:36px;height:36px;border-radius:10px;background:#dfe7ff;display:grid;place-items:center;color:#123a6d;font-weight:900}
+    h1{margin:0;font-size:1.15rem}
+    .subtitle{opacity:.9;font-size:.9rem}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px;margin:18px 0}
+    @media(min-width:1080px){.grid{grid-template-columns:1fr .9fr}}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    h2{margin:.2rem 0 .6rem;font-size:1.06rem;color:var(--ink2)}
+    h3{margin:.4rem 0 .6rem;font-size:1rem;color:var(--ink2)}
+    .hint{font-size:.88rem;color:#536482}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:var(--chip);border-radius:999px;border:1px solid #d9e6ff}
+    .divider{height:1px;background:var(--line);margin:10px 0}
+    .small{font-size:.9rem}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+    input[type="text"],input[type="email"],input[type="password"],input[type="date"],input[type="time"],input[type="number"],select,textarea{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;background:#fff;color:var(--ink);outline:0}
+    input,select{height:40px} textarea{min-height:90px;font-family:var(--mono);white-space:pre-wrap}
+    .btn{appearance:none;border:0;background:var(--btn);color:#fff;border-radius:999px;padding:10px 14px;font-weight:600;cursor:pointer}
+    .btn.secondary{background:var(--btn2);color:var(--btnInk);border:1px solid #cfe0ff}
+    .btn.ghost{background:transparent;color:var(--btnInk);border:1px dashed #cfe0ff}
+    .btn.ok{background:var(--ok)} .btn.warn{background:#f6c445;color:#1f1600} .btn.err{background:var(--err)}
+    .daybar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .session{border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0}
+    .session h4{margin:0 0 8px;font-size:1rem;color:#18314f}
+    .session .tools{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left;vertical-align:top}
+    th{background:#f3f6ff}
+    .present-toggle{display:inline-flex;align-items:center;gap:6px}
+    .present-toggle input{transform:scale(1.1)}
+    dialog{border:1px solid var(--line);border-radius:12px;padding:12px;max-width:900px;width:95vw}
+    dialog::backdrop{background:rgba(0,0,0,.2)}
+    .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .formgrid .full{grid-column:1 / -1}
+    .grid-hor{display:grid;grid-template-columns: 140px repeat(5, 1fr); gap:4px}
+    .grid-hor .slot{border:1px solid var(--line);border-radius:8px;padding:6px;min-height:52px;background:#fff}
+    .grid-hor .head{font-weight:600;background:#f4f7ff}
+    .grid-hor .times{background:#f9fbff;font-weight:500}
+    .slot .mini{font-size:.82rem;color:#395070}
+    .slot .assign{display:block;margin-top:4px}
+  </style>
+
+  <!-- MSAL (CDN principal) -->
+  <script/alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js</script>
+  <!-- Fallback MSAL (CDN europeu) -->
+  <script>
+    if (typeof window.msal === "undefined") {
+      document.write(
+        '<script src="https://alcdn.msftauth.net/browser/2.38.0/js/msal-browser.min.js"    );
+    }
+  </script>
+  <!-- Fallback 2 (jsDelivr), caso ambos falhem -->
+  <script>
+    (function ensureMsal(){
+      if (window.msal && window.msal.PublicClientApplication) return;
+      var s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.0/lib/msal-browser.min.js';
+      s.crossOrigin='anonymous';
+      s.onerror=function(){ console.error('Falha a carregar MSAL de todos os CDNs'); };
+      document.head.appendChild(s);
+    })();
+  </script>
+
+  <!-- Bibliotecas para exportações -->
+  <script src="https://cdnjsom/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2.autotable.min.js</script>
+  https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js</script>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="row">
+        <div class="brand" id="brandArea" title="Toque e segure 2s para admin">
+          <div class="logo">ESP</div>
+          <div>
+            <h1>Educação Especial · Painel do Professor</h1>
+            <div class="subtitle">Aluno‑cêntrico · OneDrive/Graph · PDF/XLSX · Import Excel · Admin discreto</div>
+          </div>
+        </div>
+        <div class="right row">
+          <button id="btnMsLogin" class="btn">Iniciar sessão Microsoft</button>
+          <button id="btnMsLogout" class="btn secondary" style="display:none">Terminar sessão</button>
+          <span id="msStatus" class="chip" aria-live="polite">Sessão: —</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <section class="card">
+        <h2>📅 Hoje</h2>
+        <div class="daybar">
+          <label>Data <input id="diaData" type="date"></label>
+          <button id="btnDiaHoje" class="btn secondary">Hoje</button>
+          <span id="diaResumo" class="chip">—</span>
+          <span class="right small">Sessões do professor para este dia</span>
+        </div>
+        <div id="diaSessoes"></div>
+      </section>
+
+      <section class="card">
+        <h2>⚙️ Ficheiros & Acesso</h2>
+        <div class="small hint">Modo preferencial: <strong>Microsoft Graph (OneDrive)</strong>. Se Graph não estiver pronto, a app pode usar pasta sincronizada (File System Access).</div>
+        <div class="divider"></div>
+        <h3>Configuração (alunos/professores/disciplinas/horários)</h3>
+        <div class="row">
+          <button id="btnImportarExcelConfig" class="btn secondary">Importar Excel</button>
+          <button id="btnExportarConfig" class="btn secondary">Exportar config (JSON)</button>
+          <span id="configNome" class="chip">—</span>
+        </div>
+        <div id="configResumo" class="small" style="margin-top:6px">Sem config.</div>
+        <div class="divider"></div>
+
+        <h3>Registos (presenças e sumários)</h3>
+        <div class="row small">
+          <span>Autosave:</span> <span id="saveStatus" class="chip">—</span>
+          <span class="right">Modo: <span id="modoGravacao" class="chip">Graph</span></span>
+        </div>
+        <div class="divider"></div>
+
+        <h3>📤 Exportações</h3>
+        <div class="row">
+          <button id="btnPdfFaltas" class="btn secondary">PDF · Faltas por aluno</button>
+          <button id="btnPdfSumarios" class="btn secondary">PDF · Sumários</button>
+          <button id="btnXlsxSumarios" class="btn secondary">XLSX · Sumários</button>
+        </div>
+      </section>
+    </div>
+
+    <p class="small hint">
+      Admin: Ctrl + Alt + G (desktop) · Toque longo no logótipo (1–2s) no telemóvel.
+    </p>
+  </main>
+
+  <!-- Admin -->
+  <dialog id="dlgAdmin">
+    <form method="dialog">
+      <h3>🔐 Administração</h3>
+      <div class="hint">Gerir alunos, professores, disciplinas, <strong>calendário (feriados e paragens letivas)</strong> e atribuir <strong>horário semanal</strong> por aluno.</div>
+      <div class="divider"></div>
+
+      <nav class="tabs" style="display:flex;gap:8px;margin-bottom:8px">
+        <button data-tab="alunos" type="button" class="btn secondary">Alunos</button>
+        <button data-tab="professores" type="button" class="btn secondary">Professores</button>
+        <button data-tab="disciplinas" type="button" class="btn secondary">Disciplinas</button>
+        <button data-tab="horario" type="button" class="btn secondary">Horário semanal</button>
+        <button data-tab="calend" type="button" class="btn secondary">Ano letivo</button>
+        <button data-tab="import" type="button" class="btn secondary">Import/Export</button>
+      </nav>
+
+      <section id="tab-alunos" class="admTab">
+        <div class="formgrid">
+          <input id="admAlunoId" placeholder="ID do aluno (ex.: a001)">
+          <input id="admAlunoNome" placeholder="Nome do aluno" class="full">
+          <input id="admAlunoTurma" placeholder="Turma (ex.: 10ºA)">
+          <button id="btnAddAluno" type="button" class="btn ok">Adicionar/Atualizar</button>
+        </div>
+        <div class="divider"></div>
+        <div class="small" id="admAlunosLista">—</div>
+      </section>
+
+      <section id="tab-professores" class="admTab" style="display:none">
+        <div class="formgrid">
+          <input id="admProfId" placeholder="ID do professor (ex.: t001)">
+          <input id="admProfNome" placeholder="Nome" class="full">
+          <input id="admProfEmail" placeholder="email@escola" class="full">
+          <button id="btnAddProf" type="button" class="btn ok">Adicionar/Atualizar</button>
+        </div>
+        <div class="divider"></div>
+        <div class="small" id="admProfsLista">—</div>
+      </section>
+
+      <section id="tab-disciplinas" class="admTab" style="display:none">
+        <div class="formgrid">
+          <input id="admDiscId" placeholder="ID da disciplina (ex.: of_port)">
+          <input id="admDiscNome" placeholder="Nome (ex.: Oficina de Português)" class="full">
+          <button id="btnAddDisc" type="button" class="btn ok">Adicionar/Atualizar</button>
+        </div>
+        <div class="divider"></div>
+        <div class="small" id="admDiscsLista">—</div>
+      </section>
+
+      <section id="tab-horario" class="admTab" style="display:none">
+        <div class="row" style="gap:12px; margin-bottom:8px">
+          <label>Aluno
+            <select id="selAlunoHorario"></select>
+          </label>
+          <span class="hint">Clique num tempo para atribuir <strong>disciplina</strong> e <strong>professor</strong>.</span>
+          <button id="btnGerarGrupos" type="button" class="btn secondary">Recalcular grupos</button>
+        </div>
+        <div id="gridHorario" class="grid-hor"></div>
+      </section>
+
+      <section id="tab-calend" class="admTab" style="display:none">
+        <div class="formgrid">
+          <input id="admAnoLetivo" placeholder="Ano letivo (2025-2026)">
+          <input id="admCalInicio" type="date" placeholder="Início">
+          <input id="admCalFim" type="date" placeholder="Fim">
+          <textarea id="admFeriados" class="full" placeholder="Feriados (uma data ISO por linha, ex.: 2025-12-25)"></textarea>
+          <textarea id="admParagens" class="full" placeholder="Paragens letivas (uma por linha, formato YYYY-MM-DD..YYYY-MM-DD)"></textarea>
+          <button id="btnUpdCalend" type="button" class="btn ok">Guardar calendário</button>
+        </div>
+      </section>
+
+      <section id="tab-import" class="admTab" style="display:none">
+        <h4>Importar de Excel (formato ideal)</h4>
+        <div class="small">
+          Folhas: <strong>Professores</strong> (id,nome,email), <strong>Alunos</strong> (id,nome,turma),
+          <strong>Disciplinas</strong> (id,nome), <strong>Grupos</strong> (id,disciplinaId,professorId,weekday,inicio,fim,sala,studentIds),
+          <strong>Calendario</strong> (anoLetivo,inicio,fim,feriados,paragensLetivas).
+        </div>
+        <div class="row" style="margin:8px 0">
+          <input id="inpExcel" type="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+          <button id="btnLerExcel" type="button" class="btn">Ler Excel</button>
+          <button id="btnExportExcelModelo" type="button" class="btn secondary">Descarregar modelo.xlsx</button>
+        </div>
+        <div class="divider"></div>
+        <div class="row">
+          <button id="btnAdmExportJson" type="button" class="btn secondary">Exportar CONFIG (JSON)</button>
+          <span id="admMsg" class="hint">—</span>
+          <button id="btnAdmFechar" class="btn ghost" style="margin-left:auto">Fechar</button>
+        </div>
+      </section>
+    </form>
+  </dialog>
+
+  <!-- Modal atribuição de slot -->
+  <dialog id="dlgSlot">
+    <form method="dialog">
+      <h4>Atribuir tempo letivo</h4>
+      <div class="formgrid">
+        <select id="slotDisc"></select>
+        <select id="slotProf"></select>
+        <input id="slotSala" placeholder="Sala (opcional)" />
+        <div class="full row" style="justify-content:space-between">
+          <button id="btnSlotGravar" type="button" class="btn ok">Gravar</button>
+          <button id="btnSlotRemover" type="button" class="btn err">Remover</button>
+          <button id="btnSlotCancelar" type="button" class="btn ghost">Cancelar</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    /* ==================== MSAL / ENTRA ID ==================== */
+    const MSAL_CONFIG = {
+      auth: {
+        clientId: "c5573063-8a04-40d3-92bf-eb229ad4701c",
+        authority: "https://login.microsoftonline.com/d650692c-6e73-48b3-af84-e3497ff3e1f1",
+        redirectUri: "https://bibliotecaesparedes-hub.github.io/gestao-alunos-app/index.html",
+        postLogoutRedirectUri: "https://bibliotecaesparedes-hub.github.io/gestao-alunos-app/index.html"
+      },
+      cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
+    };
+    const MSAL_SCOPES = { scopes: ["User.Read","Files.ReadWrite"] };
+
+    /* ==================== CONSTANTES / DADOS ==================== */
+    const WEEKDAYS = [null,'2ª','3ª','4ª','5ª','6ª'];
+    const WEEKDAYS_FULL = [null,'Segunda','Terça','Quarta','Quinta','Sexta'];
+    const FIXED_SLOTS = [
+      ['08:15','09:05'],['09:10','10:00'],['10:15','11:05'],['11:15','12:05'],
+      ['12:10','13:00'],['13:05','13:55'],['14:00','14:50'],['15:00','15:50'],
+      ['16:05','16:55'],['17:00','17:50']
+    ];
+    const SUMARIO_MAX = 500;
+
+    // OneDrive (conta do gestor)
+    const GRAPH_USER_UPN   = "biblioteca@esparedes.pt";
+    const CONFIG_FILE_PATH = "/Documents/GestaoAlunos-OneDrive/gestao_alunos_dados.json";
+    const REG_FILE_PATH    = "/Documents/GestaoAlunos-OneDrive/registos alunos.json";
+
+    // Estado
+    const state = {
+      msal:null, account:null, email:"",
+      config:null, reg:null,
+      prof:null,
+      _cfgEtag:null, _regEtag:null,
+      slotContext:null
+    };
+
+    // Utils
+    const $  = s=>document.querySelector(s);
+    const $$ = s=>Array.from(document.querySelectorAll(s));
+    const pad2 = n => (n<10?'0':'')+n;
+    const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
+    function setText(el, t){ if(el) el.textContent=t; }
+    function setStatus(id, text, cls){ const el=$("#"+id); if(!el) return; el.textContent=text; el.className=(el.className.replace(/\b(ok|warn|err)\b/g,'').trim()+ (cls?(' '+cls):'')); }
+    function weekdayOf(dateStr){ const d=new Date(dateStr+"T00:00:00"); let wd=d.getDay(); return wd===0?7:wd; }
+
+    /* ==================== CALENDÁRIO ==================== */
+    function dentroDoAnoLetivo(dateStr){
+      const cal=state.config?.calendario; if(!cal) return true;
+      if(cal.inicio && dateStr < cal.inicio) return false;
+      if(cal.fim    && dateStr > cal.fim   ) return false;
+      return true;
+    }
+    function eFeriado(dateStr){ const fer=(state.config?.calendario?.feriados||[]); return fer.includes(dateStr); }
+    function emParagemLetiva(dateStr){
+      const pars=(state.config?.calendario?.paragensLetivas||[]);
+      const d=new Date(dateStr+"T00:00:00").getTime();
+      return pars.some(r=>{
+        const [a,b]=r.split('..'); if(!a||!b) return false;
+        const t1=new Date(a+"T00:00:00").getTime(); const t2=new Date(b+"T00:00:00").getTime();
+        return d>=t1 && d<=t2;
+      });
+    }
+
+    /* ==================== MSAL LOGIN (redirect) ==================== */
+    async function initMsal(){
+      state.msal = new msal.PublicClientApplication(MSAL_CONFIG);
+
+      // Processa retorno do loginRedirect / acquireTokenRedirect
+      await state.msal.handleRedirectPromise()
+        .then((res) => { if (res && res.account) state.account = res.account; })
+        .catch(console.error);
+
+      const accs=state.msal.getAllAccounts();
+      if(state.account || accs.length){
+        state.account = state.account || accs[0];
+        afterLogin();
+      } else {
+        setText($('#msStatus'),'Sessão: não iniciada');
+      }
+    }
+    async function ensureLogin(){
+      if(state.account) return state.account;
+      await state.msal.loginRedirect(MSAL_SCOPES);
+      // Ao voltar do redirect, initMsal() trata via handleRedirectPromise()
+    }
+    function afterLogin(){
+      state.msal.setActiveAccount(state.account);
+      setText($('#msStatus'),'Sessão: '+state.account.username);
+      $('#btnMsLogin').style.display='none'; $('#btnMsLogout').style.display='inline-block';
+      state.email = state.account.username;
+
+      loadAllGraph().then(()=>{
+        setText($('#modoGravacao'),'Graph');
+        setStatus('saveStatus','Ligado (Graph)','ok');
+        mapProfessor(); refreshAdminLists(); refreshDia();
+      }).catch(e=>{
+        console.warn('Falha a carregar via Graph', e);
+        setText($('#modoGravacao'),'Graph (a configurar)');
+      });
+    }
+    async function getGraphToken(){
+      const r = await state.msal.acquireTokenSilent(MSAL_SCOPES)
+                  .catch(()=> state.msal.acquireTokenPopup(MSAL_SCOPES));
+      return r.accessToken;
+    }
+
+    /* ==================== GRAPH IO ==================== */
+    async function graphGet(url){
+      const tk=await getGraphToken();
+      const resp=await fetch('https://graph.microsoft.com/v1.0'+url,{headers:{Authorization:'Bearer '+tk}});
+      if(!resp.ok) throw new Error('GET '+url+' -> '+resp.status);
+      return resp;
+    }
+    async function graphPutContent(path, content, etag){
+      const tk=await getGraphToken();
+      const url=`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(GRAPH_USER_UPN)}/drive/root:${encodeURI(path)}:/content`;
+      const headers={'Authorization':'Bearer '+tk,'Content-Type':'application/json'};
+      if(etag) headers['If-Match']=etag;
+      const resp=await fetch(url,{method:'PUT',headers,body:content});
+      if(resp.status===412) throw new Error('412 ETag mismatch');
+      if(!resp.ok) throw new Error('PUT '+resp.status+' '+url);
+      return await resp.json();
+    }
+    async function graphStat(path){
+      const resp=await graphGet(`/users/${encodeURIComponent(GRAPH_USER_UPN)}/drive/root:${encodeURI(path)}`);
+      return await resp.json();
+    }
+    async function graphEnsureConfig(){
+      try{ const meta=await graphStat(CONFIG_FILE_PATH); state._cfgEtag=meta.eTag||meta['@odata.etag']||null; }
+      catch{ const meta=await graphPutContent(CONFIG_FILE_PATH, JSON.stringify({ anoLetivo:'2025-2026', calendario:{inicio:'',fim:'',feriados:[],paragensLetivas:[]}, professores:[], alunos:[], disciplinas:[], grupos:[] },null,2)); state._cfgEtag=meta.eTag||meta['@odata.etag']||null; }
+    }
+    async function graphLoadConfig(){
+      await graphEnsureConfig();
+      const resp=await graphGet(`/users/${encodeURIComponent(GRAPH_USER_UPN)}/drive/root:${encodeURI(CONFIG_FILE_PATH)}:/content`);
+      const txt=await resp.text(); state.config=JSON.parse(txt);
+      state._cfgEtag=(await graphStat(CONFIG_FILE_PATH)).eTag;
+    }
+    async function graphSaveConfig(){
+      const payload=JSON.stringify(state.config||{},null,2);
+      try{ const meta=await graphPutContent(CONFIG_FILE_PATH,payload,state._cfgEtag); state._cfgEtag=meta.eTag||meta['@odata.etag']||null; }
+      catch(e){ if(String(e).includes('412')){ await graphLoadConfig(); await graphSaveConfig(); } else throw e; }
+    }
+    async function graphEnsureReg(){
+      try{ const meta=await graphStat(REG_FILE_PATH); state._regEtag=meta.eTag||meta['@odata.etag']||null; }
+      catch{ const meta=await graphPutContent(REG_FILE_PATH, JSON.stringify({versao:'v1.0', registos:[]},null,2)); state._regEtag=meta.eTag||meta['@odata.etag']||null; }
+    }
+    async function graphLoadReg(){
+      await graphEnsureReg();
+      const resp=await graphGet(`/users/${encodeURIComponent(GRAPH_USER_UPN)}/drive/root:${encodeURI(REG_FILE_PATH)}:/content`);
+      const txt=await resp.text(); state.reg=JSON.parse(txt)||{versao:'v1.0', registos:[]};
+      state._regEtag=(await graphStat(REG_FILE_PATH)).eTag;
+    }
+    async function graphSaveReg(){
+      const payload=JSON.stringify(state.reg||{versao:'v1.0',registos:[]},null,2);
+      try{ const meta=await graphPutContent(REG_FILE_PATH,payload,state._regEtag); state._regEtag=meta.eTag||meta['@odata.etag']||null; setStatus('saveStatus','Guardado (Graph)','ok'); }
+      catch(e){ if(String(e).includes('412')){ await graphLoadReg(); await graphSaveReg(); } else { setStatus('saveStatus','Erro a guardar (Graph)','err'); throw e; } }
+    }
+    async function loadAllGraph(){ await graphLoadConfig(); await graphLoadReg(); }
+
+    /* ==================== VISTA DIA / PRESENÇAS ==================== */
+    function mapProfessor(){ const e=(state.email||'').toLowerCase(); state.prof = (state.config?.professores||[]).find(p=> (p.email||'').toLowerCase()===e) || null; }
+    function resumoConfig(cfg){
+      if(!cfg) return 'Sem config.';
+      const a=(cfg.alunos||[]).length, p=(cfg.professores||[]).length, d=(cfg.disciplinas||[]).length, g=(cfg.grupos||[]).length;
+      const cal=cfg.calendario||{}; const pars=(cal.paragensLetivas||[]).length; const fer=(cal.feriados||[]).length;
+      return `Ano: ${cfg.anoLetivo||'—'} · Alunos: ${a} · Professores: ${p} · Disciplinas: ${d} · Grupos: ${g} · Feriados: ${fer} · Paragens: ${pars}`;
+    }
+    function disciplinaNome(id){ return (state.config?.disciplinas||[]).find(x=>x.id===id)?.nome || id; }
+    function alunoById(id){ return (state.config?.alunos||[]).find(x=>x.id===id); }
+    function gruposDoProfessorNoDia(dateStr){
+      if(!state.config || !state.prof) return [];
+      if(!dentroDoAnoLetivo(dateStr) || eFeriado(dateStr) || emParagemLetiva(dateStr)) return [];
+      const wd=weekdayOf(dateStr); if(wd<1 || wd>5) return [];
+      const all=(state.config.grupos||[]).filter(g=> g.professorId===state.prof.id && Number(g.weekday)===wd);
+      return all.sort((a,b)=> (a.inicio||'').localeCompare(b.inicio||''));
+    }
+    function refreshDia(){
+      const dia=$('#diaData').value || todayStr(); $('#diaData').value=dia;
+      const grupos=gruposDoProfessorNoDia(dia);
+      const isCalOk = dentroDoAnoLetivo(dia) && !eFeriado(dia) && !emParagemLetiva(dia);
+      setText($('#diaResumo'), grupos.length? `${grupos.length} sessão(ões) para ${dia}` : isCalOk? `Sem sessões para ${dia}` : `Dia não letivo` );
+      const cont=$('#diaSessoes'); cont.innerHTML='';
+      grupos.forEach(g=> cont.appendChild(renderSessao(g, dia)) );
+    }
+    function nextLessonNumber(studentId, disciplinaId, dateStr){
+      const cal=state.config?.calendario||{};
+      const from=cal.inicio||'0000-01-01'; const to=cal.fim||'9999-12-31';
+      const hist=(state.reg?.registos||[]).filter(r=> r.studentId===studentId && r.disciplinaId===disciplinaId && r.date>=from && r.date<=to);
+      const max = hist.reduce((m,r)=> Math.max(m, Number(r.licao||0)), 0);
+      const existing = hist.find(r=> r.date===dateStr);
+      return existing ? existing.licao : (max+1);
+    }
+    function getOrCreateReg(dateStr, g, studentId){
+      if(!state.reg) state.reg={versao:'v1.0', registos:[]};
+      let rec = state.reg.registos.find(r=> r.date===dateStr && r.grupoId===g.id && r.studentId===studentId);
+      if(!rec){
+        rec={ date:dateStr, grupoId:g.id, disciplinaId:g.disciplinaId, professorId:g.professorId, studentId,
+              presente:true, licao: nextLessonNumber(studentId, g.disciplinaId, dateStr), sumario:'', createdAt:new Date().toISOString() };
+        state.reg.registos.push(rec); graphSaveReg();
+      }
+      return rec;
+    }
+    function renderSessao(g, dateStr){
+      const box=document.createElement('div'); box.className='session';
+      const discNome=disciplinaNome(g.disciplinaId);
+      const alunos=(g.studentIds||[]).map(alunoById).filter(Boolean).sort((a,b)=> (a.nome||'').localeCompare(b.nome||''));
+      box.innerHTML = `<h4>${discNome} · ${g.inicio||'--:--'}–${g.fim||'--:--'} ${g.sala?('· Sala '+g.sala):''}</h4>`;
+      const tools=document.createElement('div'); tools.className='tools';
+      const btnTodosPres=document.createElement('button'); btnTodosPres.className='btn secondary'; btnTodosPres.textContent='Marcar todos presentes';
+      const btnCopiarSum=document.createElement('button'); btnCopiarSum.className='btn secondary'; btnCopiarSum.textContent='Copiar sumário para todos';
+      tools.appendChild(btnTodosPres); tools.appendChild(btnCopiarSum); box.appendChild(tools);
+
+      const table=document.createElement('table'); const thead=document.createElement('thead');
+      thead.innerHTML='<tr><th>Aluno</th><th>Assiduidade</th><th>Lição #</th><th>Sumário (máx. 500)</th></tr>'; table.appendChild(thead);
+      const tbody=document.createElement('tbody'); table.appendChild(tbody);
+
+      alunos.forEach(al=>{
+        const rec=getOrCreateReg(dateStr, g, al.id);
+        const tr=document.createElement('tr');
+        const presId=`pres_${g.id}_${al.id}`; const licaoId=`lic_${g.id}_${al.id}`; const sumId=`sum_${g.id}_${al.id}`;
+        tr.innerHTML = `
+          <td>${al.nome} <span class="hint">(${al.turma||''})</span></td>
+          <td><label class="present-toggle"><input type="checkbox" id="${presId}" ${rec.presente? 'checked':''}/> Presente</label></td>
+          <td><input id="${licaoId}" type="number" min="1" value="${rec.licao||1}" style="width:90px"></td>
+          <td><textarea id="${sumId}" maxlength="${SUMARIO_MAX}" placeholder="Sumário do aluno (até ${SUMARIO_MAX} car.)">${rec.sumario||''}</textarea></td>`;
+        tbody.appendChild(tr);
+
+        setTimeout(()=>{
+          const presEl=$('#'+presId); const licEl=$('#'+licaoId); const sumEl=$('#'+sumId);
+          presEl.addEventListener('change', ()=>{ rec.presente = presEl.checked; graphSaveReg(); });
+          licEl.addEventListener('input',  ()=>{ rec.licao   = Number(licEl.value)||1; graphSaveReg(); });
+          sumEl.addEventListener('input',  ()=>{ if(sumEl.value.length>SUMARIO_MAX) sumEl.value=sumEl.value.slice(0,SUMARIO_MAX); rec.sumario = sumEl.value; graphSaveReg(); });
+        },0);
+      });
+
+      btnTodosPres.addEventListener('click', ()=>{ (g.studentIds||[]).forEach(sid=>{ const rec=getOrCreateReg(dateStr,g,sid); rec.presente=true; const el=document.getElementById(`pres_${g.id}_${sid}`); if(el) el.checked=true; }); graphSaveReg(); });
+      btnCopiarSum.addEventListener('click', ()=>{ const base = prompt('Texto a copiar como sumário para todos os alunos do grupo:'); if(base!==null){ const txt=String(base).slice(0,SUMARIO_MAX); (g.studentIds||[]).forEach(sid=>{ const rec=getOrCreateReg(dateStr,g,sid); rec.sumario = txt; const el=document.getElementById(`sum_${g.id}_${sid}`); if(el) el.value = txt; }); graphSaveReg(); } });
+
+      box.appendChild(table);
+      return box;
+    }
+
+    /* ==================== EXPORTAÇÕES ==================== */
+    async function exportPdfFaltas(){
+      if(!(state.reg && state.config)) return alert('Carregue config e registos.');
+      const { jsPDF } = window.jspdf; const doc=new jsPDF(); const rows=[];
+      (state.reg.registos||[]).forEach(r=>{ const al=alunoById(r.studentId); const disc=disciplinaNome(r.disciplinaId); rows.push([r.date, disc, al?.nome||r.studentId, r.presente? 'Presente':'Ausente']); });
+      doc.text('Registo de Faltas (Educação Especial)', 14, 14);
+      doc.autoTable({ startY: 18, head: [['Data','Disciplina','Aluno','Assiduidade']], body: rows });
+      doc.save('faltas_especial.pdf');
+    }
+    async function exportPdfSumarios(){
+      if(!(state.reg && state.config)) return alert('Carregue config e registos.');
+      const { jsPDF } = window.jspdf; const doc=new jsPDF(); const rows=[];
+      (state.reg.registos||[]).forEach(r=>{ const al=alunoById(r.studentId); const disc=disciplinaNome(r.disciplinaId); rows.push([r.date, disc, al?.nome||r.studentId, String(r.licao||''), (r.sumario||'')]); });
+      doc.text('Sumários por Aluno (Educação Especial)', 14, 14);
+      doc.autoTable({ startY: 18, head: [['Data','Disciplina','Aluno','Lição','Sumário']], body: rows, styles:{ cellWidth:'wrap' }, columnStyles:{ 4:{ cellWidth: 120 } } });
+      doc.save('sumarios_especial.pdf');
+    }
+    async function exportXlsxSumarios(){
+      if(!(state.reg && state.config)) return alert('Carregue config e registos.');
+      const rows=[['Data','Disciplina','Aluno','Lição','Sumário']];
+      (state.reg.registos||[]).forEach(r=>{ const al=alunoById(r.studentId); rows.push([r.date, disciplinaNome(r.disciplinaId), al?.nome||r.studentId, r.licao||'', r.sumario||'']); });
+      const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Sumarios'); XLSX.writeFile(wb, 'sumarios_especial.xlsx');
+    }
+
+    /* ==================== ADMIN (SUBTIL) ==================== */
+    function openAdmin(){ $('#dlgAdmin').showModal(); refreshAdminLists(); buildHorarioUI(); fillSlotSelectors(); }
+    function closeAdmin(){ $('#dlgAdmin').close(); }
+    function ensureConfig(){ if(!state.config) state.config={ anoLetivo:'2025-2026', calendario:{inicio:'',fim:'',feriados:[],paragensLetivas:[]}, professores:[], alunos:[], disciplinas:[], grupos:[] }; if(!state.config.calendario) state.config.calendario={inicio:'',fim:'',feriados:[],paragensLetivas:[]}; }
+    function refreshAdminLists(){
+      if(!state.config) return;
+      const al = state.config.alunos||[]; $('#admAlunosLista').innerHTML = al.length? al.map(a=>`${a.id} · ${a.nome} · ${a.turma||''}`).join('<br>') : '—';
+      const pr = state.config.professores||[]; $('#admProfsLista').innerHTML = pr.length? pr.map(p=>`${p.id} · ${p.nome} · ${p.email||''}`).join('<br>') : '—';
+      const di = state.config.disciplinas||[]; $('#admDiscsLista').innerHTML = di.length? di.map(d=>`${d.id} · ${d.nome}`).join('<br>') : '—';
+      const sel=$('#selAlunoHorario'); sel.innerHTML=''; al.forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent=`${a.nome} (${a.id})`; sel.appendChild(o); });
+      $('#configNome').textContent = 'Graph: ' + (state._cfgEtag? 'sincronizado' : '—');
+      $('#configResumo').textContent = resumoConfig(state.config);
+      $('#admAnoLetivo').value = state.config.anoLetivo || ''; $('#admCalInicio').value = state.config.calendario?.inicio || ''; $('#admCalFim').value = state.config.calendario?.fim || ''; $('#admFeriados').value = (state.config.calendario?.feriados||[]).join('\n'); $('#admParagens').value = (state.config.calendario?.paragensLetivas||[]).join('\n');
+    }
+    function fillSlotSelectors(){
+      const sD=$('#slotDisc'); const sP=$('#slotProf'); if(!state.config) return;
+      sD.innerHTML=''; (state.config.disciplinas||[]).forEach(d=>{ const o=document.createElement('option'); o.value=d.id; o.textContent=`${d.nome} (${d.id})`; sD.appendChild(o); });
+      sP.innerHTML=''; (state.config.professores||[]).forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=`${p.nome} (${p.id})`; sP.appendChild(o); });
+    }
+    function cell(cls, html){ const e=document.createElement('div'); e.className='slot '+cls; e.innerHTML=html; return e; }
+    function buildHorarioUI(){
+      const grid=$('#gridHorario'); if(!grid) return; grid.innerHTML='';
+      grid.appendChild(cell('head','&nbsp;')); for(let d=1; d<=5; d++){ grid.appendChild(cell('head', WEEKDAYS_FULL[d])); }
+      FIXED_SLOTS.forEach((slot, idx)=>{ grid.appendChild(cell('times', `${slot[0]}–${slot[1]}`)); for(let d=1; d<=5; d++){ const c=document.createElement('div'); c.className='slot'; c.dataset.weekday=d; c.dataset.slot=idx; c.innerHTML='<span class="mini">—</span>'; c.addEventListener('click', onClickSlotCell); grid.appendChild(c); } });
+      applyAlunoHorarioToGrid();
+    }
+    function onClickSlotCell(e){
+      const studentId=$('#selAlunoHorario').value; if(!studentId){ return alert('Selecione um aluno.'); }
+      const weekday=Number(e.currentTarget.dataset.weekday); const slotIndex=Number(e.currentTarget.dataset.slot);
+      state.slotContext={studentId, weekday, slotIndex};
+      $('#dlgSlot').showModal(); fillSlotSelectors();
+      const ass = getAssignmentFor(studentId, weekday, slotIndex);
+      if(ass){ $('#slotDisc').value=ass.disciplinaId; $('#slotProf').value=ass.professorId; $('#slotSala').value=ass.sala||''; } else { $('#slotSala').value=''; }
+    }
+    function getAssignmentFor(studentId, weekday, slotIndex){
+      const [ini,fim]=FIXED_SLOTS[slotIndex];
+      const g=(state.config?.grupos||[]).find(x=> x.weekday===weekday && x.inicio===ini && x.fim===fim && (x.studentIds||[]).includes(studentId));
+      if(!g) return null; return { grupoId:g.id, disciplinaId:g.disciplinaId, professorId:g.professorId, sala:g.sala }
+    }
+    function saveAssignment(studentId, weekday, slotIndex, disciplinaId, professorId, sala){
+      ensureConfig(); const [ini,fim]=FIXED_SLOTS[slotIndex];
+      let g=(state.config.grupos||[]).find(x=> x.weekday===weekday && x.inicio===ini && x.fim===fim && x.disciplinaId===disciplinaId && x.professorId===professorId && x.sala===(sala||''));
+      if(!g){ g={ id:`g_${weekday}_${ini}_${disciplinaId}_${professorId}`.replace(/[^a-z0-9_:-]/gi,'_'), disciplinaId, professorId, weekday, inicio:ini, fim:fim, sala: (sala||''), studentIds:[] }; state.config.grupos.push(g); }
+      if(!g.studentIds.includes(studentId)) g.studentIds.push(studentId);
+      applyAlunoHorarioToGrid(); graphSaveConfig();
+    }
+    function removeAssignment(studentId, weekday, slotIndex){
+      const [ini,fim]=FIXED_SLOTS[slotIndex];
+      (state.config?.grupos||[]).forEach(g=>{ if(g.weekday===weekday && g.inicio===ini && g.fim===fim){ const i=g.studentIds?.indexOf(studentId); if(i>=0) g.studentIds.splice(i,1); } });
+      applyAlunoHorarioToGrid(); graphSaveConfig();
+    }
+    function applyAlunoHorarioToGrid(){
+      const studentId=$('#selAlunoHorario').value; if(!studentId || !state.config) return;
+      $$('#gridHorario .slot').forEach(c=>{ if(c.classList.contains('head')||c.classList.contains('times')) return; c.innerHTML='<span class="mini">—</span>'; });
+      (state.config.grupos||[]).forEach(g=>{
+        if(!g.studentIds?.includes(studentId)) return;
+        const slotIndex = FIXED_SLOTS.findIndex(s=> s[0]===g.inicio && s[1]===g.fim); if(slotIndex<0) return;
+        const sel = `.slot[data-weekday="${g.weekday}"][data-slot="${slotIndex}"]`;
+        const cell = document.querySelector(sel);
+        if(cell){ cell.innerHTML = `<span class="mini">${disciplinaNome(g.disciplinaId)}<br><span class="assign">${g.professorId}${g.sala? ' · Sala '+g.sala:''}</span></span>`; }
+      });
+    }
+
+    /* ==================== IMPORTAÇÃO EXCEL ==================== */
+    async function readExcelConfig(){
+      const inp=$('#inpExcel'); const f=inp.files?.[0]; if(!f) return alert('Escolha um ficheiro Excel');
+      const data=await f.arrayBuffer(); const wb=XLSX.read(data,{type:'array'});
+      const getSheet=(name)=> wb.Sheets[name]; const toJSON=(ws)=> XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+      const profs = toJSON(getSheet('Professores')||{}); const alunos = toJSON(getSheet('Alunos')||{}); const discs = toJSON(getSheet('Disciplinas')||{}); const grupos = toJSON(getSheet('Grupos')||{}); const calend = toJSON(getSheet('Calendario')||{});
+      ensureConfig();
+      state.config.professores = profs.map(p=>({id:p.id,nome:p.nome,email:p.email}));
+      state.config.alunos      = alunos.map(a=>({id:a.id,nome:a.nome,turma:a.turma}));
+      state.config.disciplinas = discs.map(d=>({id:d.id,nome:d.nome}));
+      state.config.grupos      = grupos.map(g=>({id:g.id,disciplinaId:g.disciplinaId,professorId:g.professorId,weekday:Number(g.weekday),inicio:g.inicio,fim:g.fim,sala:g.sala||'',studentIds:String(g.studentIds||'').split(',').map(s=>s.trim()).filter(Boolean)}));
+      if(calend.length){
+        const c=calend[0]; state.config.anoLetivo=c.anoLetivo||state.config.anoLetivo;
+        state.config.calendario={ inicio:c.inicio||'', fim:c.fim||'', feriados:(c.feriados||'').split(/\n+/).map(s=>s.trim()).filter(Boolean), paragensLetivas:(c.paragensLetivas||'').split(/\n+/).map(s=>s.trim()).filter(Boolean) };
+      }
+      refreshAdminLists(); buildHorarioUI(); mapProfessor(); refreshDia();
+      graphSaveConfig().then(()=> alert('Excel importado e guardado no OneDrive.')).catch(console.warn);
+    }
+
+    /* ==================== INICIALIZAÇÃO ==================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Espera MSAL ficar disponível (CDN/fallback) antes de iniciar
+      (function waitMsal(i=0){
+        if (window.msal && window.msal.PublicClientApplication) return initMsal();
+        if (i>50) return console.error('MSAL não carregou');
+        setTimeout(()=>waitMsal(i+1), 100);
+      })();
+
+      // Botões sessão
+      $('#btnMsLogin').onclick = ensureLogin;
+      $('#btnMsLogout').onclick = async ()=>{ await state.msal.logoutRedirect(); state.account=null; $('#btnMsLogin').style.display='inline-block'; $('#btnMsLogout').style.display='none'; setText($('#msStatus'),'Sessão: terminada'); };
+
+      // Dia
+      $('#diaData').value = todayStr();
+      $('#btnDiaHoje').onclick = ()=>{ $('#diaData').value=todayStr(); refreshDia(); };
+      $('#diaData').addEventListener('change', refreshDia);
+
+      // Exportações
+      $('#btnPdfFaltas').onclick   = exportPdfFaltas;
+      $('#btnPdfSumarios').onclick = exportPdfSumarios;
+      $('#btnXlsxSumarios').onclick = exportXlsxSumarios;
+
+      // Admin access (discreto)
+      let pressTimer=null; $('#brandArea').addEventListener('touchstart', ()=>{ pressTimer=setTimeout(()=>openAdmin(), 1200); }); $('#brandArea').addEventListener('touchend', ()=>{ clearTimeout(pressTimer); });
+      let mouseTimer=null; $('#brandArea').addEventListener('mousedown', ()=>{ mouseTimer=setTimeout(()=>openAdmin(), 1400); }); $('#brandArea').addEventListener('mouseup', ()=>{ clearTimeout(mouseTimer); });
+      document.addEventListener('keydown', e=>{ if(e.ctrlKey && e.altKey && e.key.toLowerCase()==='g'){ openAdmin(); }});
+
+      // Admin botões
+      $$('#dlgAdmin nav button').forEach(b=> b.addEventListener('click', ()=>{ const id=b.getAttribute('data-tab'); $$('.admTab').forEach(x=> x.style.display='none'); $('#tab-'+id).style.display='block'; }));
+      $('#btnAdmFechar').onclick = closeAdmin;
+
+      // Import/Export admin
+      $('#btnLerExcel').onclick = readExcelConfig;
+      $('#btnExportExcelModelo').onclick = ()=>{ const wb = XLSX.utils.book_new(); const mk=(name,header,rows)=>{ const ws = XLSX.utils.aoa_to_sheet([header, ...rows]); XLSX.utils.book_append_sheet(wb, ws, name); };
+        mk('Professores',['id','nome','email'],[['t001','Ana Silva','ana.silva@escola']]);
+        mk('Alunos',['id','nome','turma'],[['a001','João Sousa','10ºA']]);
+        mk('Disciplinas',['id','nome'],[['of_port','Oficina de Português']]);
+        mk('Grupos',['id','disciplinaId','professorId','weekday','inicio','fim','sala','studentIds'],[['g001','of_port','t001',2,'10:15','11:05','B201','a001,a002']]);
+        mk('Calendario',['anoLetivo','inicio','fim','feriados','paragensLetivas'],[['2025-2026','2025-09-09','2026-07-31','2025-12-25\n2026-01-01','2025-12-18..2026-01-03']]);
+        XLSX.writeFile(wb,'modelo_config_especial.xlsx');
+      };
+      $('#btnAdmExportJson').onclick = ()=>{ const text = JSON.stringify(state.config||{},null,2); const blob=new Blob([text],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config_especial.json'; a.click(); };
+
+      // CRUD simples Admin
+      $('#btnAddAluno').onclick = ()=>{ ensureConfig(); const id=$('#admAlunoId').value.trim(); if(!id) return alert('ID do aluno'); const nome=$('#admAlunoNome').value.trim(); const turma=$('#admAlunoTurma').value.trim(); const idx=(state.config.alunos||[]).findIndex(a=>a.id===id); if(idx>=0) state.config.alunos[idx]={...state.config.alunos[idx], nome, turma}; else state.config.alunos.push({id,nome,turma}); refreshAdminLists(); graphSaveConfig().catch(console.warn); };
+      $('#btnAddProf').onclick   = ()=>{ ensureConfig(); const id=$('#admProfId').value.trim(); if(!id) return alert('ID do professor'); const nome=$('#admProfNome').value.trim(); const email=$('#admProfEmail').value.trim(); const idx=(state.config.professores||[]).findIndex(p=>p.id===id); if(idx>=0) state.config.professores[idx]={...state.config.professores[idx], nome, email}; else state.config.professores.push({id,nome,email}); refreshAdminLists(); graphSaveConfig().catch(console.warn); };
+      $('#btnAddDisc').onclick   = ()=>{ ensureConfig(); const id=$('#admDiscId').value.trim(); if(!id) return alert('ID da disciplina'); const nome=$('#admDiscNome').value.trim(); const idx=(state.config.disciplinas||[]).findIndex(d=>d.id===id); if(idx>=0) state.config.disciplinas[idx]={...state.config.disciplinas[idx], nome}; else state.config.disciplinas.push({id,nome}); refreshAdminLists(); graphSaveConfig().catch(console.warn); };
+
+      // Dialog slot
+      $('#btnSlotGravar').onclick  = ()=>{ const ctx=state.slotContext; if(!ctx) return; saveAssignment(ctx.studentId, ctx.weekday, ctx.slotIndex, $('#slotDisc').value, $('#slotProf').value, $('#slotSala').value); $('#dlgSlot').close(); };
+      $('#btnSlotRemover').onclick = ()=>{ const ctx=state.slotContext; if(!ctx) return; removeAssignment(ctx.studentId, ctx.weekday, ctx.slotIndex); $('#dlgSlot').close(); };
+      $('#btnSlotCancelar').onclick= ()=> $('#dlgSlot').close();
+
+      // Inicial
+      setText($('#modoGravacao'),'Graph');
+      refreshDia();
+    });
+  </script>
+</body>
+</html>
+``
